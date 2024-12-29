@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Simulated P2P Blockchain Network</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Including CryptoJS for SHA-256 hashing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        /* Basic Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        /* Network Visualization Styling */
+        #networkSection {
+            position: relative;
+        }
+
+        /* Remove the canvas and related styling */
+        #networkCanvas {
+            display: none;
+        }
+
+        /* Nodes Container */
+        .nodes-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            padding: 0px;
+        }
+
+        /* Node Styling */
+        .node {
+            background-color: #ffffff;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            padding: 20px;
+            width: 300px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .node.active {
+            box-shadow: 0 0 20px 5px #FFD700;
+        }
+
+        .node h2 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .transaction-input,
+        .actions,
+        .blockchain-display,
+        .analysis,
+        .mempool-display {
+            margin-bottom: 15px;
+        }
+
+        .transaction-input select,
+        .transaction-input input {
+            width: 90%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            animation: fadeIn 1s;
+        }
+
+        .transaction-input button,
+        .actions button {
+            padding: 10px 15px;
+            margin-right: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            animation: fadeIn 1s;
+        }
+
+        .transaction-input button {
+            background-color: #2196F3;
+        }
+
+        .actions button {
+            background-color: #4CAF50;
+        }
+
+        .actions button.validate {
+            background-color: #f44336;
+        }
+
+        /* Blockchain Display */
+        .blockchain-display {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            animation: fadeIn 1s;
+        }
+
+        .block {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border-radius: 4px;
+            position: relative;
+            color: #000;
+            font-size: 14px;
+        }
+
+        .block.invalid {
+            background-color: #ffe6e6;
+            border-left: 4px solid #f44336;
+        }
+
+        .block p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        /* Mempool Display */
+        .mempool-display {
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            animation: fadeIn 1s;
+        }
+
+        .transaction {
+            background-color: #e7f3fe;
+            padding: 5px;
+            margin-bottom: 3px;
+            border-radius: 4px;
+            font-size: 12px;
+            animation: fadeIn 1s;
+            display: flex;
+            align-items: center;
+        }
+
+        .transaction.invalid {
+            background-color: #ffdddd;
+            border-left: 4px solid #f44336;
+        }
+
+        .transaction input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        /* Analysis Section */
+        .analysis p {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        /* Animation Styling */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Verifying Overlay */
+        .verifying {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            animation: fadeIn 0.5s forwards;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .verifying.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Popup Styling */
+        .popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        .popup.show {
+            display: block;
+            animation: slideIn 0.5s forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        /* Mining Spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 2s linear infinite;
+            margin-right: 5px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Voting Popup Styling */
+        .voting-popup {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ffffff;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 100;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .voting-popup.active {
+            display: block;
+        }
+
+        .voting-popup p {
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .voting-popup button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .voting-popup button.yes {
+            background-color: #4CAF50;
+        }
+
+        .voting-popup button.no {
+            background-color: #f44336;
+        }
+
+        /* Mining Popup Styling */
+        .mining-popup {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ffffff;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 80%;
+            max-width: 400px;
+            display: none;
+        }
+
+        .mining-popup.active {
+            display: block;
+        }
+
+        .mining-popup p {
+            font-family: monospace;
+            margin-bottom: 10px;
+        }
+
+        .mining-popup button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Voting Animation Styling */
+        .voting-animation {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* Animated Dots */
+        @keyframes blinkDots {
+            0% {
+                content: '';
+            }
+
+            33% {
+                content: '.';
+            }
+
+            66% {
+                content: '..';
+            }
+
+            100% {
+                content: '...';
+            }
+        }
+
+        .animated-dots::after {
+            content: '';
+            animation: blinkDots 1s infinite;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .node {
+                width: 45%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .node {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>P2P Blockchain Network</h1>
+
+    <!-- Network Visualization Canvas -->
+    <div id="networkSection">
+        <canvas id="networkCanvas"></canvas>
+    </div>
+    <div class="nodes-container" id="nodesContainer">
+        <!-- Nodes will be dynamically added here -->
+    </div>
+
+    <!-- Popup for Attack Detection -->
+    <div class="popup" id="attackPopup">
+        <p id="attackMessage">🚨 Invalid Block Detected!</p>
+    </div>
+
+    <!-- Popup for Double-Spend Detection -->
+    <div class="popup" id="doubleSpendPopup">
+        <p id="doubleSpendMessage">⚠️ Double-Spending Attempt Detected!</p>
+    </div>
+
+    <!-- Mining Popup -->
+    <div class="mining-popup" id="miningPopup">
+        <!-- Mining animation content will be injected here -->
+    </div>
+
+    <!-- Voting Animation Popup -->
+    <div class="mining-popup" id="votingAnimationPopup">
+        <!-- Voting animation content will be injected here -->
+    </div>
+
+    <!-- Voting Popups for Each Node -->
+    <!-- These will be dynamically created and managed -->
+
+    <script>
+        // =======================
+        // Global Variables
+        // =======================
+        let globalMempool = [];
+        let votes = {}; // To track votes for the current block
+        let currentBlock = null; // The block currently being voted on
+        let preConsensusBalances = {}; // To store balances before mining for rollback
+        const totalNodes = 6; // Total number of nodes (for consensus calculations)
+
+        // =======================
+        // Block and Blockchain Classes
+        // =======================
+        class Block {
+            constructor(index, timestamp, transactions, previousHash = '') {
+                this.index = index;
+                this.timestamp = timestamp;
+                this.transactions = transactions;
+                this.previousHash = previousHash;
+                this.nonce = 0;
+                this.hash = this.calculateHash();
+            }
+
+            calculateHash() {
+                return CryptoJS.SHA256(
+                    this.index +
+                    this.timestamp +
+                    JSON.stringify(this.transactions) +
+                    this.previousHash +
+                    this.nonce
+                ).toString();
+            }
+
+            mineBlock(difficulty, callback) {
+                const target = Array(difficulty + 1).join("0");
+                const miningPopup = document.getElementById('miningPopup');
+                let nonceCounter = 0; // Simulates the random nonce search
+                let interval;
+
+                // Show the mining popup
+                miningPopup.classList.add('active');
+
+                // Function to display random numbers
+                const simulateMining = () => {
+                    nonceCounter = Math.floor(Math.random() * 100000);
+                    const simulatedHash = CryptoJS.SHA256(nonceCounter + '').toString();
+                    miningPopup.innerHTML = `
+                        <p><strong>Mining in Progress...</strong></p>
+                        <p>Nonce: ${nonceCounter}</p>
+                        <p>Processing Hash: ${simulatedHash.substring(0, 20)}...</p>
+                    `;
+                };
+
+                // Simulate mining for 5 seconds
+                interval = setInterval(simulateMining, 200);
+
+                setTimeout(() => {
+                    clearInterval(interval);
+
+                    // Actual mining to find the valid hash
+                    while (this.hash.substring(0, difficulty) !== target) {
+                        this.nonce++;
+                        this.hash = this.calculateHash();
+                    }
+
+                    // Update the popup with the final mined hash and nonce
+                    miningPopup.innerHTML = `
+                        <p><strong>Block Mined Successfully!</strong></p>
+                        <p>Final Nonce: ${this.nonce}</p>
+                        <p>Final Hash: ${this.hash}</p>
+                        <button onclick="closeMiningPopup()">OK</button>
+                    `;
+
+                    // Add event listener to proceed after clicking "OK"
+                    document.querySelector('#miningPopup button').addEventListener('click', () => {
+                        closeMiningPopup();
+                        callback();
+                    });
+                }, 5000); // Simulate mining for 5 seconds
+            }
+        }
+
+        class Blockchain {
+            constructor(nodeId, genesisBlockData) {
+                this.chain = [this.createGenesisBlock(genesisBlockData)];
+                this.difficulty = 4; // Number of leading zeros
+                this.nodeId = nodeId; // Identifier for the node
+                this.users = {
+                    'A': { balance: 100 },
+                    'B': { balance: 100 },
+                    'C': { balance: 100 },
+                    'D': { balance: 100 },
+                    'E': { balance: 100 },
+                    'F': { balance: 100 }
+                };
+            }
+
+            createGenesisBlock(genesisBlockData) {
+                return new Block(0, genesisBlockData.timestamp, genesisBlockData.transactions, genesisBlockData.previousHash);
+            }
+
+            getLatestBlock() {
+                return this.chain[this.chain.length - 1];
+            }
+
+            addTransaction(transaction) {
+                // Add transaction to the global mempool
+                globalMempool.push(transaction);
+                // Simulate broadcasting the transaction to other nodes
+                broadcastMessage({
+                    type: 'TRANSACTION',
+                    data: transaction,
+                    origin: this.nodeId
+                });
+                updateBlockchainDisplay(this);
+                return true;
+            }
+
+            minePendingTransactions(selectedTransactions = []) {
+                if (selectedTransactions.length === 0) {
+                    alert('No transactions selected for mining.');
+                    return;
+                }
+
+                // Include both valid and invalid transactions in the block
+                const validTransactions = [];
+                const invalidTransactions = [];
+
+                for (let tx of selectedTransactions) {
+                    if (!this.users[tx.sender] || !this.users[tx.receiver]) {
+                        // Invalid users; mark as invalid
+                        invalidTransactions.push(tx);
+                        continue;
+                    }
+                    if (this.users[tx.sender].balance >= tx.amount) {
+                        validTransactions.push(tx);
+                    } else {
+                        // Insufficient balance; mark as invalid
+                        invalidTransactions.push(tx);
+                        console.log(`Double-spending attempt detected for ${tx.sender}. Transaction marked as invalid.`);
+                    }
+                }
+
+                if (validTransactions.length === 0 && invalidTransactions.length === 0) {
+                    alert('No transactions to mine.');
+                    return;
+                }
+
+                // Create a new block with all selected transactions (both valid and invalid)
+                const block = new Block(
+                    this.chain.length,
+                    new Date().toISOString(),
+                    selectedTransactions, // Include all selected transactions
+                    this.getLatestBlock().hash
+                );
+
+                // Add origin property to the block
+                block.origin = this.nodeId;
+
+                // Indicate that this node is mining
+                activateNode(nodeMap[this.nodeId], 'mining');
+
+                // Mine the block (proof-of-work) with animation
+                block.mineBlock(this.difficulty, () => {
+                    // After mining is complete
+
+                    // Do NOT remove transactions from mempool here
+
+                    // Broadcast the block to initiate voting
+                    broadcastMessage({
+                        type: 'BLOCK',
+                        data: block,
+                        origin: this.nodeId
+                    });
+
+                    // Initiate voting process
+                    initiateVotingProcess(block, this.nodeId);
+
+                    // Animate block addition (even though it's pending consensus)
+                    animateBlockAddition(this.nodeId, block);
+
+                    // If there were invalid transactions selected, notify the user about double-spend attempts
+                    if (invalidTransactions.length > 0) {
+                        triggerDoubleSpendPopup();
+                    }
+
+                    // Indicate that mining is done
+                    deactivateNode(nodeMap[this.nodeId], 'mining');
+                });
+            }
+
+            isChainValid(receivedChain = null) {
+                const chainToValidate = receivedChain || this.chain;
+                const start = performance.now();
+
+                // Temporary user balances for validation
+                const tempBalances = {
+                    'A': 100,
+                    'B': 100,
+                    'C': 100,
+                    'D': 100,
+                    'E': 100,
+                    'F': 100
+                };
+
+                for (let i = 1; i < chainToValidate.length; i++) {
+                    const currentBlock = chainToValidate[i];
+                    const previousBlock = chainToValidate[i - 1];
+
+                    // Recalculate the hash and compare
+                    const tempBlock = new Block(
+                        currentBlock.index,
+                        currentBlock.timestamp,
+                        currentBlock.transactions,
+                        currentBlock.previousHash
+                    );
+                    tempBlock.nonce = currentBlock.nonce;
+                    tempBlock.hash = currentBlock.hash;
+
+                    if (tempBlock.hash !== currentBlock.hash) {
+                        const end = performance.now();
+                        const validationTime = end - start;
+                        return { valid: false, time: validationTime, error: 'Block hash is invalid.' };
+                    }
+
+                    // Check if previousHash matches
+                    if (currentBlock.previousHash !== previousBlock.hash) {
+                        const end = performance.now();
+                        const validationTime = end - start;
+                        return { valid: false, time: validationTime, error: 'Previous hash does not match.' };
+                    }
+
+                    // Check proof-of-work
+                    if (currentBlock.hash.substring(0, this.difficulty) !== Array(this.difficulty + 1).join("0")) {
+                        const end = performance.now();
+                        const validationTime = end - start;
+                        return { valid: false, time: validationTime, error: 'Proof-of-work is invalid.' };
+                    }
+
+                    // Validate transactions and update temporary balances
+                    for (let tx of currentBlock.transactions) {
+                        if (!this.users[tx.sender] || !this.users[tx.receiver]) {
+                            const end = performance.now();
+                            const validationTime = end - start;
+                            return { valid: false, time: validationTime, error: 'Transaction involves unknown users.' };
+                        }
+
+                        // Check for sufficient balance
+                        if (tempBalances[tx.sender] < tx.amount) {
+                            const end = performance.now();
+                            const validationTime = end - start;
+                            return { valid: false, time: validationTime, error: `User ${tx.sender} is trying to double-spend.` };
+                        }
+
+                        tempBalances[tx.sender] -= tx.amount;
+                        tempBalances[tx.receiver] += tx.amount;
+                    }
+                }
+
+                const end = performance.now();
+                const validationTime = end - start;
+                return { valid: true, time: validationTime };
+            }
+
+            replaceChain(newChain) {
+                const validation = this.isChainValid(newChain);
+                if (validation.valid) {
+                    this.chain = newChain;
+
+                    // Recalculate user balances based on the new chain
+                    this.resetBalances();
+                    for (let i = 1; i < this.chain.length; i++) {
+                        const block = this.chain[i];
+                        block.transactions.forEach(tx => {
+                            if (this.users[tx.sender]) {
+                                this.users[tx.sender].balance -= tx.amount;
+                                if (this.users[tx.sender].balance < 0) {
+                                    this.users[tx.sender].balance = 0;
+                                }
+                            }
+                            if (this.users[tx.receiver]) {
+                                this.users[tx.receiver].balance += tx.amount;
+                            }
+                        });
+                    }
+
+                    // Clear pending transactions
+                    globalMempool = [];
+
+                    return true;
+                } else {
+                    // Invalid chain; do not replace
+                    return false;
+                }
+            }
+
+            resetBalances() {
+                this.users = {
+                    'A': { balance: 100 },
+                    'B': { balance: 100 },
+                    'C': { balance: 100 },
+                    'D': { balance: 100 },
+                    'E': { balance: 100 },
+                    'F': { balance: 100 }
+                };
+            }
+        }
+
+        // =======================
+        // Network Visualization
+        // =======================
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = 400;
+
+        // Node Positions (for visualization)
+        const nodePositions = {};
+
+        // Map nodeId to nodeDiv for easy access
+        const nodeMap = {};
+
+        // Initialize Nodes
+        const nodes = [];
+        const numberOfNodes = 6; // Total nodes
+
+        // Standard Genesis Block Data
+        const fixedGenesisBlockData = {
+            timestamp: "2023-01-01T00:00:00Z",
+            transactions: ["Genesis Block"],
+            previousHash: "0"
+        };
+
+        // Map Users to Node IDs
+        const userToNodeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6 };
+
+        // Generate positions for nodes on the canvas
+        const angleStep = (2 * Math.PI) / numberOfNodes;
+        const radius = 150;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        for (let i = 1; i <= numberOfNodes; i++) {
+            const angle = i * angleStep;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            nodePositions[i] = { x, y };
+
+            const node = new Blockchain(i, fixedGenesisBlockData);
+            nodes.push(node);
+            createNodeUI(node);
+        }
+
+        // Draw the network
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw connections
+            ctx.strokeStyle = '#cccccc';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    ctx.beginPath();
+                    ctx.moveTo(nodePositions[nodes[i].nodeId].x, nodePositions[nodes[i].nodeId].y);
+                    ctx.lineTo(nodePositions[nodes[j].nodeId].x, nodePositions[nodes[j].nodeId].y);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw nodes
+            nodes.forEach(node => {
+                const pos = nodePositions[node.nodeId];
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 20, 0, 2 * Math.PI);
+                ctx.fillStyle = '#4CAF50';
+                ctx.fill();
+                ctx.strokeStyle = nodeMap[node.nodeId].classList.contains('active') ? '#FFD700' : '#4CAF50';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Draw node labels
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Node ${node.nodeId} (${getUserForNode(node.nodeId)})`, pos.x, pos.y);
+            });
+        }
+
+        drawNetwork();
+
+        // Animate network (e.g., blinking nodes)
+        function animateNetwork() {
+            drawNetwork();
+            requestAnimationFrame(animateNetwork);
+        }
+
+        animateNetwork();
+
+        // =======================
+        // Simulation of P2P Network
+        // =======================
+        function broadcastMessage(message) {
+            // Simulate network latency
+            // const latency = Math.floor(Math.random() * 400) + 100;
+
+            nodes.forEach(node => {
+                if (node.nodeId !== message.origin) {
+                    setTimeout(() => {
+                        handleMessage(node, message);
+                        // Show verification animation
+                        showVerification(node.nodeId);
+                    }, 0);
+                }
+            });
+        }
+
+        function handleMessage(node, message) {
+            switch (message.type) {
+                case 'TRANSACTION':
+                    // Update display
+                    updateBlockchainDisplay(node);
+                    break;
+                case 'BLOCK':
+                    // In manual mode, block handling is managed separately
+                    break;
+                default:
+                    console.log('Unknown message type:', message.type);
+            }
+        }
+
+        // =======================
+        // Mining Popup Functions
+        // =======================
+        function closeMiningPopup() {
+            const miningPopup = document.getElementById('miningPopup');
+            miningPopup.classList.remove('active');
+        }
+
+        // =======================
+        // Voting Mechanism with Animation
+        // =======================
+        function initiateVotingProcess(block, minerId) {
+            currentBlock = block;
+            votes = {};
+            votes[minerId] = 'yes'; // Miner automatically votes yes
+
+            // Store pre-consensus balances for rollback if needed
+            preConsensusBalances[minerId] = JSON.parse(JSON.stringify(nodes.find(n => n.nodeId === minerId).users));
+
+            // Begin voting animation
+            startVotingAnimation(block, minerId);
+        }
+
+        function startVotingAnimation(block, minerId) {
+            const votingPopup = document.getElementById('votingAnimationPopup');
+            votingPopup.classList.add('active');
+            votingPopup.innerHTML = `<p class="voting-animation">Node ${minerId} is voting<span class="animated-dots"></span></p>`;
+
+            // Simulate delay before miner's vote is displayed
+            setTimeout(() => {
+                votingPopup.innerHTML += `<p>Node ${minerId} voted YES!</p>`;
+                proceedToNextVote(block, minerId, 0);
+            }, 1000);
+        }
+
+        function proceedToNextVote(block, minerId, index) {
+            const otherNodes = nodes.filter(node => node.nodeId !== minerId);
+            if (index < otherNodes.length) {
+                const nodeId = otherNodes[index].nodeId;
+                const votingPopup = document.getElementById('votingAnimationPopup');
+                votingPopup.innerHTML += `<p class="voting-animation">Node ${nodeId} is voting<span class="animated-dots"></span></p>`;
+
+                // Show voting popup for the node
+                setTimeout(() => {
+                    showVotingPopup(nodeId, block, () => {
+                        // After vote is cast
+                        const voteResult = votes[nodeId] === 'yes' ? 'YES!' : 'NO!';
+                        votingPopup.innerHTML += `<p>Node ${nodeId} voted ${voteResult}</p>`;
+                        proceedToNextVote(block, minerId, index + 1);
+                    });
+                }, 1000);
+            } else {
+                // All votes are in
+                setTimeout(() => {
+                    checkConsensus(); // Call consensus check after the last vote
+                }, 1000);
+            }
+        }
+
+        function showVotingPopup(nodeId, block, callback) {
+            const nodeDiv = nodeMap[nodeId];
+            let popup = nodeDiv.querySelector('.voting-popup');
+
+            if (!popup) {
+                // Create popup if it doesn't exist
+                popup = document.createElement('div');
+                popup.className = 'voting-popup';
+                popup.id = `node-${nodeId}-voting-popup`;
+                popup.innerHTML = `
+                    <p><strong>New Block Proposed:</strong></p>
+                    <p><strong>Index:</strong> ${block.index}</p>
+                    <p><strong>Timestamp:</strong> ${block.timestamp}</p>
+                    <p><strong>Transactions:</strong> ${block.transactions.map(tx => typeof tx === 'string' ? tx : `${tx.sender} ➡️ ${tx.receiver}: ${tx.amount} ${tx.valid === false ? '(Invalid)' : ''}`).join(', ')}</p>
+                `;
+                const yesButton = document.createElement('button');
+                yesButton.className = 'yes';
+                yesButton.textContent = 'Yes';
+                yesButton.addEventListener('click', () => {
+                    voteBlock(nodeId, true, callback);
+                });
+
+                const noButton = document.createElement('button');
+                noButton.className = 'no';
+                noButton.textContent = 'No';
+                noButton.addEventListener('click', () => {
+                    voteBlock(nodeId, false, callback);
+                });
+
+                popup.appendChild(yesButton);
+                popup.appendChild(noButton);
+
+                nodeDiv.appendChild(popup);
+            }
+
+            popup.classList.add('active');
+        }
+
+        function voteBlock(nodeId, vote, callback) {
+            // Record the vote
+            votes[nodeId] = vote ? 'yes' : 'no';
+            console.log(`Node ${nodeId} voted ${votes[nodeId]} for block ${currentBlock.index}`);
+
+            // Hide the popup
+            const popup = document.getElementById(`node-${nodeId}-voting-popup`);
+            if (popup) {
+                popup.classList.remove('active');
+            }
+
+            // Continue voting animation
+            callback();
+        }
+        function refreshState() {
+            nodes.forEach(node => {
+                updateBlockchainDisplay(node);
+                const mempoolDiv = document.getElementById(`node-${node.nodeId}-mempool`);
+                mempoolDiv.innerHTML = `<strong>Mempool:</strong> ${renderMempool(globalMempool)}`;
+            });
+            console.log("State refreshed for all nodes.");
+        }
+        function checkConsensus() {
+            const votingPopup = document.getElementById('votingAnimationPopup');
+
+            // Number of votes needed for consensus (>2/3)
+            const requiredVotes = Math.ceil((2 / 3) * totalNodes);
+
+            let yesVotes = 0;
+            for (let vote of Object.values(votes)) {
+                if (vote === 'yes') yesVotes++;
+            }
+
+            setTimeout(() => {
+                if (yesVotes >= requiredVotes) {
+                    // Consensus achieved, add block to all nodes
+                    votingPopup.innerHTML += `<p>Consensus reached - Block added!</p>`;
+                    nodes.forEach(node => {
+                        node.chain.push(currentBlock);
+
+                        // Update user balances based on the new block
+                        currentBlock.transactions.forEach(tx => {
+                            if (node.users[tx.sender]) {
+                                node.users[tx.sender].balance -= tx.amount;
+                                if (node.users[tx.sender].balance < 0) {
+                                    node.users[tx.sender].balance = 0;
+                                }
+                            }
+                            if (node.users[tx.receiver]) {
+                                node.users[tx.receiver].balance += tx.amount;
+                            }
+                        });
+
+                        updateBlockchainDisplay(node);
+                        animateBlockAddition(node.nodeId, currentBlock);
+                    });
+
+                    // Remove the block's transactions from the mempool
+                    globalMempool = globalMempool.filter(
+                        tx => !currentBlock.transactions.includes(tx)
+                    );
+
+                    // Synchronize Miner Wallet
+                    const referenceNode = nodes.find(n => n.nodeId !== currentBlock.origin);
+                    if (referenceNode) {
+                        const minerNode = nodes.find(n => n.nodeId === currentBlock.origin);
+                        minerNode.users = JSON.parse(JSON.stringify(referenceNode.users));
+                        updateBlockchainDisplay(minerNode);
+                        console.log(`Miner Node ${minerNode.nodeId} wallet synchronized with Node ${referenceNode.nodeId}.`);
+                    }
+
+                } else {
+                    // Consensus not achieved, reject block and rollback balances
+                    votingPopup.innerHTML += `<p>Consensus not reached - Block rejected!</p>`;
+
+                    // Synchronize miner wallet with another node as a temporary fix
+                    const referenceNode = nodes.find(n => n.nodeId !== currentBlock.origin);
+                    if (referenceNode) {
+                        const minerNode = nodes.find(n => n.nodeId === currentBlock.origin);
+                        minerNode.users = JSON.parse(JSON.stringify(referenceNode.users));
+                        updateBlockchainDisplay(minerNode);
+                        console.log(`Miner Node ${minerNode.nodeId} wallet synchronized with Node ${referenceNode.nodeId} after rejection.`);
+                    }
+
+                    // Remove the block from all nodes' chains if it was added
+                    nodes.forEach(node => {
+                        if (node.chain[node.chain.length - 1].index === currentBlock.index) {
+                            node.chain.pop();
+                            updateBlockchainDisplay(node);
+                        }
+                    });
+
+                    // Do NOT remove transactions from mempool; they remain for future blocks
+                }
+
+                // Refresh the state for all nodes
+                refreshState();
+
+                // Reset voting state
+                currentBlock = null;
+                votes = {};
+
+                // Close voting animation popup
+                setTimeout(() => {
+                    votingPopup.classList.remove('active');
+                }, 2000);
+            }, 1000);
+        }
+        // =======================
+        // Attack Detection Popup
+        // =======================
+        function triggerAttackDetection(errorMessage) {
+            const popup = document.getElementById('attackPopup');
+            const attackMessage = document.getElementById('attackMessage');
+            attackMessage.innerText = `🚨 Invalid Block Detected: ${errorMessage}`;
+            popup.classList.add('show');
+
+            // Hide the popup after 5 seconds
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 5000);
+
+            // Adopt the longest valid chain
+            adoptLongestChain();
+        }
+
+        // =======================
+        // Double-Spend Detection Popup
+        // =======================
+        function triggerDoubleSpendPopup() {
+            const popup = document.getElementById('doubleSpendPopup');
+            popup.classList.add('show');
+
+            // Hide the popup after 5 seconds
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 5000);
+        }
+
+        // Adopt the Longest Valid Chain Across Nodes
+        function adoptLongestChain() {
+            // Find the longest valid chain among all nodes
+            let longestValidChain = null;
+            let maxLength = 0;
+
+            nodes.forEach(node => {
+                const validation = node.isChainValid(node.chain);
+                if (validation.valid && node.chain.length > maxLength) {
+                    longestValidChain = node.chain;
+                    maxLength = node.chain.length;
+                }
+            });
+
+            // If no valid chain is found, do nothing
+            if (!longestValidChain) {
+                console.log('No valid chain found among nodes.');
+                return;
+            }
+
+            // Replace each node's chain with the longest valid chain if their chain is invalid or differs
+            nodes.forEach(node => {
+                const validation = node.isChainValid(node.chain);
+                const isSameChain = JSON.stringify(node.chain) === JSON.stringify(longestValidChain);
+
+                if (!validation.valid || !isSameChain) {
+                    node.replaceChain(JSON.parse(JSON.stringify(longestValidChain)));
+                    updateBlockchainDisplay(node);
+                    animateChainReplacement(node.nodeId, longestValidChain);
+                }
+            });
+        }
+
+        // =======================
+        // User Interface Functions
+        // =======================
+        function createNodeUI(node) {
+            const nodesContainer = document.getElementById('nodesContainer');
+
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'node';
+            nodeDiv.id = `node-${node.nodeId}`;
+            nodeMap[node.nodeId] = nodeDiv;
+
+            nodeDiv.innerHTML = `
+                <h2>Node ${node.nodeId} (${getUserForNode(node.nodeId)})</h2>
+                <div class="transaction-input">
+                    <select id="node-${node.nodeId}-sender">
+                        <option value="">Select Sender</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                    </select>
+                    <select id="node-${node.nodeId}-receiver">
+                        <option value="">Select Receiver</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                    </select>
+                    <input type="number" id="node-${node.nodeId}-amount" placeholder="Amount">
+                    <button onclick="addTransaction(${node.nodeId})">Add Transaction</button>
+                </div>
+                <div class="actions">
+                    <button onclick="mineBlock(${node.nodeId})">Mine Block</button>
+                    <button class="validate" onclick="validateChain(${node.nodeId})">Validate Chain</button>
+                </div>
+                <div class="blockchain-display" id="node-${node.nodeId}-blockchain">
+                    ${renderChain(node.chain)}
+                </div>
+                <div class="mempool-display" id="node-${node.nodeId}-mempool">
+                    <strong>Mempool:</strong>
+                    ${renderMempool(globalMempool)}
+                </div>
+                <div class="analysis">
+                    <p id="node-${node.nodeId}-cpu-time-mining">CPU Time Mining: N/A</p>
+                    <p id="node-${node.nodeId}-cpu-time-validation">Validation: N/A</p>
+                    <p id="node-${node.nodeId}-latency">Last Broadcast Latency: N/A</p>
+                    <p><strong>Balances:</strong></p>
+                    <ul>
+                        <li>A: <span id="node-${node.nodeId}-balance-A">100</span></li>
+                        <li>B: <span id="node-${node.nodeId}-balance-B">100</span></li>
+                        <li>C: <span id="node-${node.nodeId}-balance-C">100</span></li>
+                        <li>D: <span id="node-${node.nodeId}-balance-D">100</span></li>
+                        <li>E: <span id="node-${node.nodeId}-balance-E">100</span></li>
+                        <li>F: <span id="node-${node.nodeId}-balance-F">100</span></li>
+                    </ul>
+                </div>
+            `;
+
+            nodesContainer.appendChild(nodeDiv);
+        }
+
+        function getUserForNode(nodeId) {
+            // Map nodeId to user: 1 -> A, 2 -> B, 3 -> C, 4 -> D, 5 -> E, 6 -> F
+            const mapping = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F' };
+            return mapping[nodeId] || 'None';
+        }
+
+        function renderChain(chain) {
+            let html = '';
+            chain.forEach(block => {
+                const isInvalidBlock = block.transactions.some(tx => tx.valid === false);
+                html += `
+                    <div class="block ${isInvalidBlock ? 'invalid' : ''}">
+                        <p><strong>Index:</strong> ${block.index}</p>
+                        <p><strong>Timestamp:</strong> ${block.timestamp}</p>
+                        <p><strong>Transactions:</strong> ${block.transactions.map(tx => typeof tx === 'string' ? tx : `${tx.sender} ➡️ ${tx.receiver}: ${tx.amount} ${tx.valid === false ? '(Invalid)' : ''}`).join(', ')}</p>
+                        <p><strong>Nonce:</strong> ${block.nonce}</p>
+                        <p><strong>Hash:</strong> ${block.hash}</p>
+                        <p><strong>Previous Hash:</strong> ${block.previousHash}</p>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        function renderMempool(mempool) {
+            if (mempool.length === 0) {
+                return '<p>No pending transactions.</p>';
+            }
+            let html = '';
+            mempool.forEach((tx, index) => {
+                const isInvalid = tx.valid === false;
+                html += `
+                    <div class="transaction ${isInvalid ? 'invalid' : ''}">
+                        <input type="checkbox" id="tx-${index}">
+                        <label for="tx-${index}">${tx.sender} ➡️ ${tx.receiver}: ${tx.amount} ${isInvalid ? '(Invalid)' : ''}</label>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        function updateBlockchainDisplay(node) {
+            const blockchainDiv = document.getElementById(`node-${node.nodeId}-blockchain`);
+            blockchainDiv.innerHTML = renderChain(node.chain);
+
+            // Update Balances
+            document.getElementById(`node-${node.nodeId}-balance-A`).innerText = node.users['A'].balance;
+            document.getElementById(`node-${node.nodeId}-balance-B`).innerText = node.users['B'].balance;
+            document.getElementById(`node-${node.nodeId}-balance-C`).innerText = node.users['C'].balance;
+            document.getElementById(`node-${node.nodeId}-balance-D`).innerText = node.users['D'].balance;
+            document.getElementById(`node-${node.nodeId}-balance-E`).innerText = node.users['E'].balance;
+            document.getElementById(`node-${node.nodeId}-balance-F`).innerText = node.users['F'].balance;
+
+            // Update Mempool with checkboxes (all transactions are selectable)
+            const mempoolDiv = document.getElementById(`node-${node.nodeId}-mempool`);
+            mempoolDiv.innerHTML = `<strong>Mempool:</strong> ${renderMempool(globalMempool)}`;
+        }
+
+        // =======================
+        // User Interaction Handlers
+        // =======================
+        function addTransaction(nodeId) {
+            const senderSelect = document.getElementById(`node-${nodeId}-sender`);
+            const receiverSelect = document.getElementById(`node-${nodeId}-receiver`);
+            const amountInput = document.getElementById(`node-${nodeId}-amount`);
+
+            const sender = senderSelect.value;
+            const receiver = receiverSelect.value;
+            const amount = parseFloat(amountInput.value.trim());
+
+            if (sender === '' || receiver === '' || isNaN(amount) || amount <= 0) {
+                alert('Invalid transaction details. Please ensure all fields are correctly filled.');
+                return;
+            }
+
+            // Prevent sender and receiver from being the same
+            if (sender === receiver) {
+                alert('Sender and Receiver cannot be the same.');
+                return;
+            }
+
+            const transaction = {
+                sender: sender,
+                receiver: receiver,
+                amount: amount
+            };
+
+            const node = nodes.find(n => n.nodeId === nodeId);
+
+            // Pre-validation to check for double-spending
+            const pendingTxs = globalMempool.filter(tx => tx.sender === transaction.sender && tx.valid !== false);
+            const totalPending = pendingTxs.reduce((sum, tx) => sum + tx.amount, 0);
+            const availableBalance = node.users[transaction.sender].balance - totalPending;
+
+            if (availableBalance >= transaction.amount) {
+                transaction.valid = true;
+            } else {
+                transaction.valid = false;
+                console.log(`Double-spending attempt detected for ${transaction.sender}. Transaction marked as invalid.`);
+            }
+
+
+            // Simulate and display network latency for broadcast
+            const startLatency = performance.now();
+
+            node.addTransaction(transaction);
+            updateBlockchainDisplay(node);
+
+            const endLatency = performance.now();
+
+            const broadcastLatency = endLatency - startLatency;
+            document.getElementById(`node-${node.nodeId}-latency`).innerText = `Last Broadcast Latency: ${broadcastLatency.toFixed(2)} ms`;
+            console.log(`Broadcast latency: ${broadcastLatency.toFixed(2)} ms`);
+
+
+            // Animate transaction with validity
+            animateTransaction(transaction, node.nodeId, 'all');
+
+            // Clear input fields
+            senderSelect.value = '';
+            receiverSelect.value = '';
+            amountInput.value = '';
+        }
+
+
+        function mineBlock(nodeId) {
+            const node = nodes.find(n => n.nodeId === nodeId);
+            if (globalMempool.length === 0) {
+                alert('No transactions to mine.');
+                return;
+            }
+
+            // Gather selected transactions
+            const selectedTransactions = [];
+            const nodeDiv = nodeMap[nodeId];
+            const checkboxes = nodeDiv.querySelectorAll('.mempool-display .transaction input[type="checkbox"]');
+
+            checkboxes.forEach((checkbox, index) => {
+                if (checkbox.checked) {
+                    selectedTransactions.push(globalMempool[index]);
+                }
+            });
+
+            if (selectedTransactions.length === 0) {
+                alert('No transactions selected for mining.');
+                return;
+            }
+
+            // Measure CPU time for mining
+            const startMining = performance.now();
+            node.minePendingTransactions(selectedTransactions);
+            const endMining = performance.now();
+            const miningTime = endMining - startMining; // CPU Time for mining
+            const miningTimeClockCycles = miningTime * 1000;
+
+            // Update the UI or alert with the mining time
+            alert(`Mining completed in ${miningTime.toFixed(2)} ms.`);
+            document.getElementById(`node-${node.nodeId}-cpu-time-mining`).innerText = `CPU Time - Mining: ${miningTime.toFixed(2)} ms, ${miningTimeClockCycles.toFixed(2)} Hz`;
+
+            // Update the blockchain display
+            updateBlockchainDisplay(node);
+        }
+
+
+        function validateChain(nodeId) {
+            const node = nodes.find(n => n.nodeId === nodeId);
+
+            // Measure CPU time for validation
+            const startValidation = performance.now();
+            const { valid, time, error } = node.isChainValid();
+            const endValidation = performance.now();
+
+            const validationTime = endValidation - startValidation; // CPU Time for validation
+            const validationTimeClockCycles = validationTime * 1000;
+
+            const message = valid
+                ? `Blockchain is valid.`
+                : `Blockchain is invalid! Error: ${error}`;
+
+            // Display the result in an alert
+            alert(`${message} Validation Time: ${validationTime.toFixed(2)} ms`);
+
+            // Update the CPU Time display for validation
+            document.getElementById(`node-${node.nodeId}-cpu-time-validation`).innerText = `Validation: ${validationTime.toFixed(2)} ms, ${validationTimeClockCycles.toFixed(2)} Hz`;
+
+            
+        }
+
+
+        // =======================
+        // Animation Functions
+        // =======================
+        // Mining Animation: Activate and Deactivate Node
+        function activateNode(nodeDiv, action) {
+            if (action === 'mining') {
+                nodeDiv.classList.add('active');
+            } else if (action === 'validating') {
+                nodeDiv.classList.add('active');
+            }
+        }
+
+        function deactivateNode(nodeDiv, action) {
+            if (action === 'mining') {
+                nodeDiv.classList.remove('active');
+            } else if (action === 'validating') {
+                nodeDiv.classList.remove('active');
+            }
+        }
+
+        // Block Addition Animation
+        function animateBlockAddition(nodeId, block) {
+            const nodeDiv = nodeMap[nodeId];
+            const blockchainDiv = document.getElementById(`node-${nodeId}-blockchain`);
+            const newBlockDiv = blockchainDiv.lastElementChild;
+
+            // Add glowing effect
+            newBlockDiv.style.transition = 'box-shadow 0.5s';
+            newBlockDiv.style.boxShadow = '0 0 10px 2px #4CAF50';
+
+            // Remove glowing effect after animation
+            setTimeout(() => {
+                newBlockDiv.style.boxShadow = 'none';
+            }, 1000);
+        }
+
+        // Chain Replacement Animation
+        function animateChainReplacement(nodeId, newChain) {
+            const nodeDiv = nodeMap[nodeId];
+            const blockchainDiv = document.getElementById(`node-${nodeId}-blockchain`);
+            const blocks = blockchainDiv.getElementsByClassName('block');
+
+            // Highlight all blocks briefly
+            for (let block of blocks) {
+                block.style.transition = 'background-color 0.5s';
+                block.style.backgroundColor = '#d1ffd1';
+            }
+
+            setTimeout(() => {
+                for (let block of blocks) {
+                    block.style.backgroundColor = '#fff';
+                }
+            }, 1000);
+        }
+
+        // Transaction Animation
+        function animateTransaction(transaction, fromNodeId, toNodeId) {
+            // Visualize transaction on the network canvas
+            const senderPos = nodePositions[fromNodeId];
+            const receiverIds = toNodeId === 'all' ? getReceiverIds(transaction.receiver) : [toNodeId];
+            receiverIds.forEach(receiverId => {
+                const receiverPos = nodePositions[receiverId];
+                const transactionColor = transaction.valid ? getRandomColor() : '#FF0000'; // Red for invalid transactions
+
+                let x = senderPos.x;
+                let y = senderPos.y;
+                const endX = receiverPos.x;
+                const endY = receiverPos.y;
+
+                const speed = 2; // pixels per frame
+
+                const animate = () => {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = transactionColor;
+                    ctx.fill();
+
+                    if (x < endX) x += speed;
+                    if (x > endX) x -= speed;
+                    if (y < endY) y += speed;
+                    if (y > endY) y -= speed;
+
+                    if (Math.abs(x - endX) > speed || Math.abs(y - endY) > speed) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+
+                animate();
+            });
+        }
+
+        function getReceiverIds(receiver) {
+            // Map receiver to node IDs: A -> 1, B -> 2, C -> 3, D -> 4, E -> 5, F -> 6
+            const mapping = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6 };
+            if (mapping[receiver]) {
+                return [mapping[receiver]];
+            } else {
+                // If receiver is not A, B, C, D, E, or F, assign randomly to any node except sender
+                const receiverNodes = nodes.filter(n => !['A', 'B', 'C', 'D', 'E', 'F'].includes(getUserForNode(n.nodeId)));
+                return receiverNodes.map(n => n.nodeId);
+            }
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Show verification animation (optional)
+        function showVerification(nodeId) {
+            // Optional function to show nodes verifying messages
+        }
+
+        // =======================
+        // Initialize UI and Simulation
+        // =======================
+        function initialize() {
+            // Initial rendering done during node creation
+            // Users can start adding transactions manually
+        }
+
+        initialize();
+    </script>
+</body>
+
+</html>
